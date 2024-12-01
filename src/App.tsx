@@ -1,22 +1,92 @@
 /* eslint-disable react/react-in-jsx-scope */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import type { User } from './types'
+import { SortBy, type User } from './types.d'
+import UserList from './components/UserList'
 
 function App() {
-  const [users, setUsers] = useState<Array<User>>([])
+  const originalUsers = useRef<User[]>([])
+
+  const [users, setUsers] = useState<User[]>([])
+  const [showColors, setShowColors] = useState(false)
+  const [sortBy, setSortBy] = useState<SortBy>(SortBy.NONE)
+  const [filteredCountry, setFilteredCountry] = useState<string|undefined>(undefined)
 
   useEffect(() => {
     fetch('https://randomuser.me/api?results=100')
       .then(res => res.json())
-      .then(res => setUsers(res.results))
+      .then(res => {
+        setUsers(res.results)
+        originalUsers.current = res.results
+      })
       .catch(error => console.error(error))
   }, [])
 
+  const filteredUsers = useMemo(() => {
+    return filteredCountry
+    ? users.filter(user => user.location.country.toLowerCase().includes(filteredCountry.toLowerCase()))
+    : users
+  }, [filteredCountry, users])
+
+  const sortedUsers = useMemo(() => {
+    if (sortBy === SortBy.NONE) return filteredUsers
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compareProperties: Record<string, (user: User) => any> = {
+      [SortBy.NAME]: user => user.name.first,
+      [SortBy.LAST]: user => user.name.last,
+      [SortBy.COUNTRY]: user => user.location.country,
+    }
+
+    return filteredUsers.toSorted((a, b) => {
+      const property = compareProperties[sortBy]
+      return property(a).localeCompare(property(b))
+    })
+  }, [filteredUsers, sortBy])
+
+  const handleDelete = (idx: string) => {
+    const filteredUsers = users.filter((user) => user.login.uuid !== idx)
+
+    setUsers(filteredUsers)
+  }
+
+  const handleReset = () => {
+    setUsers(originalUsers.current)
+  }
+
+  const handleSort = (sort: SortBy) => {
+    setSortBy(sort)
+  }
+
   return (
     <>
-      <h1>Hola ruben</h1>
-      {JSON.stringify(users)}
+      <h1>Mis Usuarios</h1>
+      <header>
+        <button onClick={() => setShowColors(!showColors)}>
+          Colorear Filas
+        </button>
+        <button onClick={() => setSortBy(sortBy === SortBy.COUNTRY ? SortBy.NONE : SortBy.COUNTRY)}>
+          {sortBy === SortBy.COUNTRY ? 'No ordenar por país' : 'Ordenar por país'}
+        </button>
+        <button onClick={handleReset}>
+          Reset
+        </button>
+        <input
+          type="text"
+          placeholder='Filtra por país'
+          value={filteredCountry}
+          onChange={(e) => setFilteredCountry(e.target.value)}
+        />
+      </header>
+
+      <main>
+        <UserList
+          users={sortedUsers}
+          showColors={showColors}
+          handleDelete={handleDelete}
+          handleSort={handleSort}
+        />
+      </main>
     </>
   )
 }
