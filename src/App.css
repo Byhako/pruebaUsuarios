@@ -7,13 +7,14 @@
 }
 
 h1 {
-  margin: 0 0 40px;
+  margin: 0 0 50px;
 }
 
 header {
-  margin-bottom: 20px;
+  margin: 0 auto 20px;
   display: flex;
   justify-content: space-around;
+  width: 70%;
 }
 
 input {
@@ -22,4 +23,8 @@ input {
 
 .sort {
   cursor: pointer;
+}
+
+thead {
+  background-color: #000;
 }
